@@ -46,18 +46,13 @@ void* thrd2(void* arg){
 int main(){
 
 	global_vars();
-	//txn1();
-	//txn2();		
 	
-	 
 	pthread_create(&t1, NULL, thrd1, NULL);
-
 	pthread_create(&t2, NULL, thrd2, NULL);
 
 	pthread_join(t1, NULL);
 	pthread_join(t1, NULL);
 	
-	//cout<<hex<<&lock<<" "<<&glo1<<" "<<&glo2<<endl;
 	printf("%p %p %p\n", &lock, &glo1, &glo2);
     return 0;
 }
