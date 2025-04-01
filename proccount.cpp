@@ -334,11 +334,7 @@ VOID Initialise(){
 }
 
 VOID RecordMemRead(THREADID tid, ADDRINT addr, UINT32 size) {
-    // if(glob==true){
-    // outFile << "[Thread " << tid << "] READ from: " 
-    //         << std::hex << addr << " | Size: " << size << " bytes" <<glob<< std::endl;
-    // }
-
+    
     if(start && !glob){
         if(var_addr.count(addr)){
             //address is a global var
@@ -349,12 +345,7 @@ VOID RecordMemRead(THREADID tid, ADDRINT addr, UINT32 size) {
 }
 
 VOID RecordMemWrite(THREADID tid, ADDRINT addr, UINT32 size) {
-    // if(glob==true){
-    // outFile << "[Thread " << tid << "] WRITE to: " 
-    //         << std::hex << addr << " | Size: " << size << " bytes" <<glob<< std::endl;
-    // }
-
-    if(start && !glob){
+       if(start && !glob){
         if(var_addr.count(addr)){
             //address is a global var
             write(tid, var[addr]);
@@ -392,19 +383,6 @@ VOID Instruction(INS ins, VOID *v) {
 VOID Routine(RTN rtn, VOID* v)
 {
     // Allocate a counter for this routine
-    RTN_COUNT* rc = new RTN_COUNT;
-
-    // The RTN goes away when the image is unloaded, so save it now
-    // because we need it in the fini
-    rc->_name     = RTN_Name(rtn);
-    rc->_image    = StripPath(IMG_Name(SEC_Img(RTN_Sec(rtn))).c_str());
-    rc->_address  = RTN_Address(rtn);
-    rc->_icount   = 0;
-    rc->_rtnCount = 0;
-
-    // Add to list of routines
-    rc->_next = RtnList;
-    RtnList   = rc;
 
     RTN_Open(rtn);
 
@@ -414,24 +392,9 @@ VOID Routine(RTN rtn, VOID* v)
 	
 	RTN_InsertCall(rtn,IPOINT_BEFORE, (AFUNPTR)checkmain, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_END);
 	
-    /*if(RTN_NumArgs(rtn)==1){
-	
-	RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)printfunc1, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_THREAD_ID, IARG_FUNCARG_ENTRYPOINT_VALUE, 0 ,IARG_END);
-}else if(RTN_NumArgs(rtn)==2){
-	*/RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)printfunc2, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_THREAD_ID, IARG_FUNCARG_ENTRYPOINT_VALUE, 0, IARG_FUNCARG_ENTRYPOINT_VALUE, 1 ,IARG_END);
-/*}else{
-
-	RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)printfunc0, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_THREAD_ID ,IARG_END);
-}*/
+   	RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)printfunc2, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_THREAD_ID, IARG_FUNCARG_ENTRYPOINT_VALUE, 0, IARG_FUNCARG_ENTRYPOINT_VALUE, 1 ,IARG_END);
 
 	RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)docount, IARG_PTR, &(rc->_rtnCount), IARG_END);
-
-    // For each instruction of the routine
-    for (INS ins = RTN_InsHead(rtn); INS_Valid(ins); ins = INS_Next(ins))
-    {
-        // Insert a call to docount to increment the instruction counter for this rtn
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)docount, IARG_PTR, &(rc->_icount), IARG_END);
-    }
 
 	RTN_InsertCall(rtn, IPOINT_AFTER, (AFUNPTR)retfunc, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_THREAD_ID, IARG_END);
     RTN_Close(rtn);
@@ -441,18 +404,6 @@ VOID Routine(RTN rtn, VOID* v)
 // It prints the name and count for each procedure
 VOID Fini(INT32 code, VOID* v)
 {
-   /* outFile << setw(23) << "Procedure"
-            << " " << setw(15) << "Image"
-            << " " << setw(18) << "Address"
-            << " " << setw(12) << "Calls"
-            << " " << setw(12) << "Instructions" << endl;
-
-    for (RTN_COUNT* rc = RtnList; rc; rc = rc->_next)
-    {
-        if (rc->_icount > 0 && rc->_name.size()>=3 && rc->_name[0]=='t' && rc->_name[1]=='x' && rc->_name[2]=='n')
-            outFile << setw(23) << rc->_name << " " << setw(15) << rc->_image << " " << setw(18) << hex << rc->_address << dec
-                    << " " << setw(12) << rc->_rtnCount << " " << setw(12) << rc->_icount << endl;
-    }*/
     outFile<<"The transactions are serialisable"<<endl;
 }
 
