@@ -82,23 +82,6 @@ const char* StripPath(const char* path)
         return path;
 }
 
-VOID checkmain(const char* str){
-	if(strlen(str)>=4 && (str[0]=='m' && str[1]=='a' && str[2]=='i' && str[3]=='n')){
-		start=true;
-        long long p = PIN_GetTid();
-        thrdid[p]=0;
-        // cout<<"reached main\n";
-	}
-
-   
-
-    if(strcmp(str, "global_vars")==0){
-        glob=true;
-        // cout<<"glob started\n";
-    }
-
-	return;
-}
 
 bool clkComp(map<long long, long long> clk1,map<long long, long long> clk2 ){
     bool ans=true;
@@ -253,22 +236,29 @@ void initialisation(){
       }
     }
 
-    // outFile<<"\nAll variables initialised lck-"<<locks<<" "<<vars<<endl<<endl;
   
 }
 
 
-VOID printfunc0(const char* func, THREADID tid){
-	// if(start) outFile<< func<<" called from "<<tid<<" ptid = "<<PIN_GetParentTid()<<" tid="<<PIN_GetTid()<<endl;
-	return;
-}
-VOID printfunc1(const char* func, THREADID tid, ADDRINT arg0){
-	// if(start) outFile<< func<<" called from "<<tid<<" with args "<<hex<<arg0<<" ptid = "<<PIN_GetParentTid()<<" tid="<<PIN_GetTid()<<endl;
+VOID checkmain(const char* str){
+	if(strlen(str)>=4 && (str[0]=='m' && str[1]=='a' && str[2]=='i' && str[3]=='n')){
+		start=true;
+        long long p = PIN_GetTid();
+        thrdid[p]=0;
+
+	}
+
+   
+
+    if(strcmp(str, "global_vars")==0){
+        glob=true;
+
+    }
+
 	return;
 }
 
 VOID beginfunc(char* func, THREADID tid, ADDRINT arg0, ADDRINT arg1){
-	// if(start) outFile<< func<<" called from "<<tid<<" with args "<<hex<<arg0<<" and " <<arg1<<dec<<" ptid = "<<PIN_GetParentTid()<<" tid="<<PIN_GetTid()<<endl;
     if(start){
         if(glob){
             if(strcmp(func,"write_")==0){
@@ -283,20 +273,17 @@ VOID beginfunc(char* func, THREADID tid, ADDRINT arg0, ADDRINT arg1){
         }else{
             if(strncmp(func, "thrd", 4)==0){
                 //thread begin
-                // printf("%s called pt-%d t-%d",func,PIN_GetParentTid(), PIN_GetTid());
-                // fork(0,tid);
+
                 long long par_tid = PIN_GetParentTid();
                 long long cur_tid = PIN_GetTid();
                 if(thrdid.find(par_tid)==thrdid.end() && par_tid!=0){
-                    // outFile<<"Parent tid not init\n";
-                    // outFile<<par_tid<<" "<<cur_tid<<endl;
-
+                     outFile<<"Parent tid not init\n";
+                     outFile<<par_tid<<" "<<cur_tid<<endl;
                     exit(0);
                 }
                 if(par_tid!=0){
                     if(thrdid.find(cur_tid)==thrdid.end()){
                         thrdid[cur_tid] = thrdid.size();
-                        // outFile<<cur_tid<<" init to "<<thrdid[cur_tid]<<endl;
                     }
 
                     fork(thrdid[par_tid], thrdid[cur_tid]);
@@ -306,30 +293,7 @@ VOID beginfunc(char* func, THREADID tid, ADDRINT arg0, ADDRINT arg1){
             
 
             if(strncmp(func, "txn", 3)==0){
-                // begin(tid);
-                // printf("%s called t-%d\n",func, PIN_GetTid());
                 begin(thrdid[PIN_GetTid()]);
-            }
-
-            if(strcmp(func, "pthread_mutex_lock")==0){
-                //lock acquire
-                if(lock_addr.count(arg0)==1){
-                    //lock variable is included
-                    // acquire(tid, lck[arg0]);
-                    // printf("pthread_mutex_lock called - %#lx\n", arg0);
-                    // acquire(thrdid[PIN_GetTid()], lck[arg0]);
-                }
-            }
-
-            if(strcmp(func, "pthread_mutex_unlock")==0){
-                //lock acquire
-                if(lock_addr.count(arg0)==1){
-                    //lock variable is included
-                    
-                    // release(tid, lck[arg0]);
-                    // printf("pthread_mutex_unlock called - %#lx\n", arg0);
-                    // release(thrdid[PIN_GetTid()], lck[arg0]);
-                }
             }
 
 
@@ -340,28 +304,23 @@ VOID beginfunc(char* func, THREADID tid, ADDRINT arg0, ADDRINT arg1){
 	return;
 }
 VOID retfunc(const char* func, THREADID tid, ADDRINT arg0, ADDRINT arg1){
-	// if(start) outFile<<func<<" return from "<<tid<<" ptid = "<<PIN_GetParentTid()<<" tid="<<PIN_GetTid()<<endl;
-    // if(strlen(func)>=4 && (func[0]=='m' && func[1]=='a' && func[2]=='i' && func[3]=='n')){
-	// 	start=false;
-	// }
+	
     if(strncmp(func,"main",4)==0){
         start=false;
     }
     
     if(strcmp(func, "global_vars")==0){
         glob=false;
-        // cout<<"glob finished\ninit start\n";
+	
         //initialise everything here
         locks = lock_addr.size();
         vars = var_addr.size();
         initialisation();
-        // cout<<"init fini\n";
+
     }
 
     if(start && !glob){
         if(strncmp(func,"thrd",4)==0){
-            // printf("%s return pt-%d t-%d\n",func,PIN_GetParentTid(), PIN_GetTid());
-            // join(0,tid);
 
             if(thrdid.find(PIN_GetParentTid())==thrdid.end() && PIN_GetParentTid()!=0){
                 outFile<<"Error in join ptid\n";
@@ -497,55 +456,11 @@ VOID Instruction(INS ins, VOID *v) {
 }
 
 
-//Imagefunction
-VOID ImageLoad(IMG img, VOID* v)
-{
-    // Only look at the main executable, not shared libs
-    if (!IMG_IsMainExecutable(img))
-        return;
-
-    // Iterate through sections
-    for (SEC sec = IMG_SecHead(img); SEC_Valid(sec); sec = SEC_Next(sec))
-    {
-        string secName = SEC_Name(sec);
-        
-        if (secName == ".data" || secName == ".bss")
-        {
-            std::cout << "Section: " << secName << std::endl;
-
-            // Iterate through all symbols in the section
-            for (SYM sym = IMG_RegsymHead(img); SYM_Valid(sym); sym = SYM_Next(sym))
-            {
-                string symName = SYM_Name(sym);
-                ADDRINT symAddr = IMG_LowAddress(img) + SYM_Value(sym);
-                cout<<symName<<endl;
-                if (symAddr >= SEC_Address(sec) && symAddr < SEC_Address(sec) + SEC_Size(sec)) {
-                    std::cout << "  Variable: " << symName << " at " << std::hex << symAddr << std::endl;
-                }
-            }
-        }
-    }
-}
-
-
 
 // Pin calls this function every time a new rtn is executed
 VOID Routine(RTN rtn, VOID* v)
 {
-    // Allocate a counter for this routine
-    RTN_COUNT* rc = new RTN_COUNT;
-
-    // The RTN goes away when the image is unloaded, so save it now
-    // because we need it in the fini
-    rc->_name     = RTN_Name(rtn);
-    rc->_image    = StripPath(IMG_Name(SEC_Img(RTN_Sec(rtn))).c_str());
-    rc->_address  = RTN_Address(rtn);
-    rc->_icount   = 0;
-    rc->_rtnCount = 0;
-
-    // Add to list of routines
-    rc->_next = RtnList;
-    RtnList   = rc;
+    
 
     RTN_Open(rtn);
 
@@ -555,28 +470,14 @@ VOID Routine(RTN rtn, VOID* v)
 	
 	RTN_InsertCall(rtn,IPOINT_BEFORE, (AFUNPTR)checkmain, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_END);
 	
-    /*if(RTN_NumArgs(rtn)==1){
-	
-	RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)printfunc1, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_THREAD_ID, IARG_FUNCARG_ENTRYPOINT_VALUE, 0 ,IARG_END);
-}else if(RTN_NumArgs(rtn)==2){
-	*/RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)beginfunc, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_THREAD_ID, IARG_FUNCARG_ENTRYPOINT_VALUE, 0, IARG_FUNCARG_ENTRYPOINT_VALUE, 1 ,IARG_END);
-/*}else{
-
-	RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)printfunc0, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_THREAD_ID ,IARG_END);
-}*/
+   	RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)beginfunc, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_THREAD_ID, IARG_FUNCARG_ENTRYPOINT_VALUE, 0, IARG_FUNCARG_ENTRYPOINT_VALUE, 1 ,IARG_END);
 
 	RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)docount, IARG_PTR, &(rc->_rtnCount), IARG_END);
 
-    // For each instruction of the routine
-    for (INS ins = RTN_InsHead(rtn); INS_Valid(ins); ins = INS_Next(ins))
-    {
-        // Insert a call to docount to increment the instruction counter for this rtn
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)docount, IARG_PTR, &(rc->_icount), IARG_END);
-    }
 
 	RTN_InsertCall(rtn, IPOINT_AFTER, (AFUNPTR)retfunc, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_THREAD_ID, IARG_FUNCARG_ENTRYPOINT_VALUE, 0, IARG_FUNCARG_ENTRYPOINT_VALUE, 1, IARG_END);
 
-    // RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)beginfunc, IARG_PTR, mp[RTN_Address(rtn)].c_str(), IARG_THREAD_ID, IARG_FUNCARG_ENTRYPOINT_VALUE, 0, IARG_FUNCARG_ENTRYPOINT_VALUE, 1 ,IARG_END);
+    
     RTN_Close(rtn);
 }
 
@@ -584,18 +485,6 @@ VOID Routine(RTN rtn, VOID* v)
 // It prints the name and count for each procedure
 VOID Fini(INT32 code, VOID* v)
 {
-   /* outFile << setw(23) << "Procedure"
-            << " " << setw(15) << "Image"
-            << " " << setw(18) << "Address"
-            << " " << setw(12) << "Calls"
-            << " " << setw(12) << "Instructions" << endl;
-
-    for (RTN_COUNT* rc = RtnList; rc; rc = rc->_next)
-    {
-        if (rc->_icount > 0 && rc->_name.size()>=3 && rc->_name[0]=='t' && rc->_name[1]=='x' && rc->_name[2]=='n')
-            outFile << setw(23) << rc->_name << " " << setw(15) << rc->_image << " " << setw(18) << hex << rc->_address << dec
-                    << " " << setw(12) << rc->_rtnCount << " " << setw(12) << rc->_icount << endl;
-    }*/
     outFile<<"The transactions are serialisable"<<endl;
 }
 
@@ -619,24 +508,17 @@ int main(int argc, char* argv[])
 {
     // Initialize symbol table code, needed for rtn instrumentation
     PIN_InitSymbols();
-    
-    // for(int i=0;i<argc;i++){
-    //     printf("%s | ", argv[i]);
-    // }
-    // printf("\n");
 
-    outFile.open("proccount.out");
+    outFile.open("serialisable.out");
 
     // Initialize pin
     if (PIN_Init(argc, argv)) return Usage();
     PIN_InitLock(&pinl);
 	
-	//initialise data
+	//initialise function
 	Initialise();	
 
 
-    // Register Routine to be called to instrument rtn
-    // IMG_AddInstrumentFunction(ImageLoad, 0);
 
     RTN_AddInstrumentFunction(Routine, 0);
     INS_AddInstrumentFunction(Instruction, 0);
